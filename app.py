@@ -1,21 +1,44 @@
-
 from flask import Flask, render_template, request
 from pymysql import connections
 import os
 import time
+import boto3
+from botocore.exceptions import NoCredentialsError
+
+# Group info
+GROUP_NAME = os.environ.get("GROUP_NAME", "Group9")
+GROUP_SLOGAN = os.environ.get("GROUP_SLOGAN", "Secure. Scalable. Cloud.")
 
 app = Flask(__name__)
 
-# Fetch environment variables  for the webapp
+# MySQL config
 DBHOST = os.environ.get("DBHOST", "mysql-container")
 DBUSER = os.environ.get("DBUSER", "root")
 DBPWD = os.environ.get("DBPWD", "pw")
 DATABASE = os.environ.get("DATABASE", "employees")
-DBPORT = int(os.environ.get("DBPORT", 3306))  # Default to 3306 if not set
+DBPORT = int(os.environ.get("DBPORT", 3306))
 
-# Retry logic for MySQL connection
+# S3 image config
+S3_BUCKET = os.environ.get("S3_BUCKET_NAME")
+S3_KEY = os.environ.get("S3_IMAGE_KEY")  # e.g., "Seneca.png"
+LOCAL_IMAGE_PATH = "static/Seneca.png"
+
+# # Download background image from S3
+# if S3_BUCKET and S3_KEY:
+#     try:
+#         s3 = boto3.client('s3')
+#         s3.download_file(S3_BUCKET, S3_KEY, LOCAL_IMAGE_PATH)
+#         print(f"Downloaded background image from S3: s3://{S3_BUCKET}/{S3_KEY}")
+#     except NoCredentialsError:
+#         print("AWS credentials not available for S3 access.")
+#     except Exception as e:
+#         print(f"Error downloading image from S3: {e}")
+# else:
+#     print("S3_BUCKET_NAME or S3_IMAGE_KEY env variable is missing")
+
+# Retry MySQL connection
 MAX_RETRIES = 5
-RETRY_DELAY = 5  # Seconds
+RETRY_DELAY = 5
 db_conn = None
 
 for attempt in range(MAX_RETRIES):
@@ -36,7 +59,7 @@ else:
     print("MySQL connection failed after multiple retries. Exiting.")
     exit(1)
 
-# Define supported color codes
+# Color codes
 color_codes = {
     "red": "#e74c3c",
     "green": "#16a085",
@@ -47,20 +70,22 @@ color_codes = {
     "lime": "#C1FF9C",
 }
 
-# Default color from environment variable
 COLOR = os.environ.get('APP_COLOR', "lime")
-if COLOR not in color_codes:  
+if COLOR not in color_codes:
     print(f"Invalid APP_COLOR: {COLOR}. Defaulting to 'lime'.")
     COLOR = "lime"
 
+# Routes
 @app.route("/", methods=['GET'])
 def home():
-    return render_template('addemp.html', color=color_codes[COLOR])
+    return render_template('addemp.html', color=color_codes[COLOR],
+                           group_name=GROUP_NAME, group_slogan=GROUP_SLOGAN)
 
 @app.route("/about", methods=['GET'])
 def about():
-    return render_template('about.html', color=color_codes[COLOR])
-    
+    return render_template('about.html', color=color_codes[COLOR],
+                           group_name=GROUP_NAME, group_slogan=GROUP_SLOGAN)
+
 @app.route("/addemp", methods=['POST'])
 def AddEmp():
     emp_id = request.form.get('emp_id')
@@ -70,7 +95,7 @@ def AddEmp():
     location = request.form.get('location')
 
     insert_sql = "INSERT INTO employee (emp_id, first_name, last_name, primary_skill, location) VALUES (%s, %s, %s, %s, %s)"
-    
+
     try:
         with db_conn.cursor() as cursor:
             cursor.execute(insert_sql, (emp_id, first_name, last_name, primary_skill, location))
@@ -82,20 +107,24 @@ def AddEmp():
         db_conn.rollback()
         emp_name = "Error"
 
-    return render_template('addempoutput.html', name=emp_name, color=color_codes[COLOR])
+    return render_template('addempoutput.html', name=emp_name, color=color_codes[COLOR],
+                           group_name=GROUP_NAME, group_slogan=GROUP_SLOGAN)
 
 @app.route("/getemp", methods=['GET'])
 def GetEmp():
-    return render_template("getemp.html", color=color_codes[COLOR])
+    return render_template("getemp.html", color=color_codes[COLOR],
+                           group_name=GROUP_NAME, group_slogan=GROUP_SLOGAN)
 
 @app.route("/fetchdata", methods=['POST'])
 def FetchData():
     emp_id = request.form.get('emp_id')
 
     if not emp_id:
-        print(" No Employee ID provided")
+        print("No Employee ID provided")
         return render_template("getempoutput.html", id="N/A", fname="N/A",
-                               lname="N/A", interest="N/A", location="N/A", color=color_codes[COLOR])
+                               lname="N/A", interest="N/A", location="N/A",
+                               color=color_codes[COLOR],
+                               group_name=GROUP_NAME, group_slogan=GROUP_SLOGAN)
 
     select_sql = "SELECT emp_id, first_name, last_name, primary_skill, location FROM employee WHERE emp_id=%s"
 
@@ -105,9 +134,11 @@ def FetchData():
             result = cursor.fetchone()
 
         if not result:
-            print(" Employee not found")
+            print("Employee not found")
             return render_template("getempoutput.html", id="N/A", fname="N/A",
-                                   lname="N/A", interest="N/A", location="N/A", color=color_codes[COLOR])
+                                   lname="N/A", interest="N/A", location="N/A",
+                                   color=color_codes[COLOR],
+                                   group_name=GROUP_NAME, group_slogan=GROUP_SLOGAN)
 
         output = {
             "emp_id": result[0],
@@ -118,12 +149,17 @@ def FetchData():
         }
 
         return render_template("getempoutput.html", id=output["emp_id"], fname=output["first_name"],
-                               lname=output["last_name"], interest=output["primary_skills"], location=output["location"], color=color_codes[COLOR])
+                               lname=output["last_name"], interest=output["primary_skills"], location=output["location"],
+                               color=color_codes[COLOR],
+                               group_name=GROUP_NAME, group_slogan=GROUP_SLOGAN)
 
     except Exception as e:
         print(f"Error fetching employee: {e}")
 
-    return render_template("getempoutput.html", id="N/A", fname="N/A", lname="N/A", interest="N/A", location="N/A", color=color_codes[COLOR])
+    return render_template("getempoutput.html", id="N/A", fname="N/A",
+                           lname="N/A", interest="N/A", location="N/A",
+                           color=color_codes[COLOR],
+                           group_name=GROUP_NAME, group_slogan=GROUP_SLOGAN)
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8080, debug=True)
