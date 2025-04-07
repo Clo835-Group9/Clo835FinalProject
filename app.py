@@ -3,6 +3,7 @@ from pymysql import connections
 import os
 import time
 import boto3
+import sys
 from botocore.exceptions import NoCredentialsError
 
 # Group info
@@ -69,24 +70,30 @@ MAX_RETRIES = 5
 RETRY_DELAY = 5
 db_conn = None
 
-for attempt in range(MAX_RETRIES):
-    try:
-        db_conn = connections.Connection(
-            host=DBHOST,
-            port=DBPORT,
-            user=DBUSER,
-            password=DBPWD,
-            db=DATABASE
-        )
-        print("✅ Successfully connected to MySQL")
-        break
-    except Exception as e:
-        print(f"MySQL Connection attempt {attempt + 1} failed: {e}")
-        time.sleep(RETRY_DELAY)
-else:
+def connect_to_db():
+    global db_conn
+    for attempt in range(MAX_RETRIES):
+        try:
+            db_conn = connections.Connection(
+                host=DBHOST,
+                port=DBPORT,
+                user=DBUSER,
+                password=DBPWD,
+                db=DATABASE
+            )
+            print("✅ Successfully connected to MySQL")
+            return
+        except Exception as e:
+            print(f"MySQL Connection attempt {attempt + 1} failed: {e}")
+            time.sleep(RETRY_DELAY)
     print("❌ MySQL connection failed after multiple retries. Exiting.")
     exit(1)
 
+# 💡 Only run DB connection if NOT in pytest
+if not any("pytest" in arg for arg in sys.argv):
+    connect_to_db()
+else:
+    print("🧪 Skipping DB connection during tests")
 # --- Routes ---
 @app.route("/", methods=['GET'])
 def home():
