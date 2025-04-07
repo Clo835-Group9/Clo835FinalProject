@@ -38,7 +38,10 @@ jobs:
       run: |
         docker run -d -p 8080:81 --name test-app myapp
         sleep 5
-        curl --fail http://localhost:8080 || (echo " App test failed"; docker logs test-app; exit 1)
+        echo "🔍 Container logs:"
+        docker logs test-app || true
+        echo "🌐 Testing endpoint..."
+        curl --fail http://localhost:8080 || (echo "❌ App test failed"; docker ps -a; docker inspect test-app; exit 1)
         docker stop test-app && docker rm test-app
 
     # Step 6: Tag & Push WebApp Image to ECR
