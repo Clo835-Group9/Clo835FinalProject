@@ -54,9 +54,15 @@ jobs:
           -e AWS_DEFAULT_REGION="${{ env.AWS_REGION }}" \
           myapp
 
+        echo "Waiting for app to start..."
         sleep 5
+
+        echo "=========== CONTAINER LOGS =========="
         docker logs test-app || true
-        curl --fail http://localhost:8080 || (echo "App test failed"; exit 1)
+
+        echo "=========== CURL TEST ==============="
+        curl -v http://localhost:8080 || (echo "App test failed"; exit 1)
+
         docker stop test-app && docker rm test-app
 
     - name: Tag and push MyApp to ECR
@@ -72,3 +78,4 @@ jobs:
       run: |
         docker build -t $ECR_REGISTRY/${{ env.MYSQL_REPO }}:${{ env.MYSQL_TAG }} -f Dockerfile_mysql .
         docker push $ECR_REGISTRY/${{ env.MYSQL_REPO }}:${{ env.MYSQL_TAG }}
+
