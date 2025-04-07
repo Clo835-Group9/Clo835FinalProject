@@ -55,7 +55,7 @@ def download_image_from_s3(bucket_name, s3_key, local_path):
 # Use env variables (simulating ConfigMap)
 S3_BUCKET = os.environ.get("S3_BUCKET_NAME")
 S3_KEY = os.environ.get("S3_IMAGE_KEY")  # e.g., "Seneca.png"
-LOCAL_IMAGE_PATH = "static/background.jpg"
+LOCAL_IMAGE_PATH = "static/Seneca.png"
 
 if S3_BUCKET and S3_KEY:
     downloaded = download_image_from_s3(S3_BUCKET, S3_KEY, LOCAL_IMAGE_PATH)
