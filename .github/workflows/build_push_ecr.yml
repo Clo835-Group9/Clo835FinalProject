@@ -1,0 +1,81 @@
+name: Build, Test, and Push to ECR
+
+on:
+  push:
+    branches:
+      - main
+
+env:
+  AWS_REGION: us-east-1
+  IMAGE_TAG: app-v0.1
+  MYSQL_TAG: mysql-v0.1
+  WEBAPP_REPO: clo835/webapp
+  MYSQL_REPO: clo835/mysql
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v1
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
+        aws-region: ${{ env.AWS_REGION }}
+
+    - name: Login to Amazon ECR
+      id: login-ecr
+      uses: aws-actions/amazon-ecr-login@v1
+
+    - name: Build MyApp image
+      run: docker build -t myapp -f Dockerfile .
+
+    - name: Smoke Test MyApp container
+      run: |
+        docker run -d \
+          -p 8080:81 \
+          --name test-app \
+          -e DBHOST="localhost" \
+          -e DBUSER="root" \
+          -e DBPWD="pw" \
+          -e DATABASE="employees" \
+          -e GROUP_NAME="TestGroup" \
+          -e GROUP_SLOGAN="From Pipeline to Prod" \
+          -e S3_BUCKET_NAME="dummy-bucket" \
+          -e S3_IMAGE_KEY="dummy.png" \
+          -e AWS_ACCESS_KEY_ID="${{ secrets.AWS_ACCESS_KEY_ID }}" \
+          -e AWS_SECRET_ACCESS_KEY="${{ secrets.AWS_SECRET_ACCESS_KEY }}" \
+          -e AWS_SESSION_TOKEN="${{ secrets.AWS_SESSION_TOKEN }}" \
+          -e AWS_DEFAULT_REGION="${{ env.AWS_REGION }}" \
+          myapp
+
+        echo "Waiting for app to start..."
+        sleep 5
+
+        echo "=========== CONTAINER LOGS =========="
+        docker logs test-app || true
+
+        echo "=========== CURL TEST ==============="
+        curl -v http://localhost:8080 || (echo "App test failed"; exit 1)
+
+        docker stop test-app && docker rm test-app
+
+    - name: Tag and push MyApp to ECR
+      env:
+        ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+      run: |
+        docker tag myapp $ECR_REGISTRY/${{ env.WEBAPP_REPO }}:${{ env.IMAGE_TAG }}
+        docker push $ECR_REGISTRY/${{ env.WEBAPP_REPO }}:${{ env.IMAGE_TAG }}
+
+    - name: Build and push MySQL image to ECR
+      env:
+        ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+      run: |
+        docker build -t $ECR_REGISTRY/${{ env.MYSQL_REPO }}:${{ env.MYSQL_TAG }} -f Dockerfile_mysql .
+        docker push $ECR_REGISTRY/${{ env.MYSQL_REPO }}:${{ env.MYSQL_TAG }}
+
