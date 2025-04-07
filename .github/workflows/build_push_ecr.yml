@@ -7,15 +7,15 @@ on:
 
 jobs:
   build:
-    name: CI for WebApp + MySQL
+    name: CI for MyApp + MySQL
     runs-on: ubuntu-latest
 
     steps:
-    # Step 1: Checkout Code
+    # Step 1: Checkout your code
     - name: Checkout source code
       uses: actions/checkout@v3
 
-    # Step 2: Configure AWS Credentials
+    # Step 2: Set up AWS credentials from GitHub secrets
     - name: Configure AWS credentials
       uses: aws-actions/configure-aws-credentials@v1
       with:
@@ -24,28 +24,47 @@ jobs:
         aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
         aws-region: us-east-1
 
-    # Step 3: Login to Amazon ECR
+    # Step 3: Login to ECR
     - name: Login to Amazon ECR
       id: login-ecr
       uses: aws-actions/amazon-ecr-login@v1
 
-    # Step 4: Build WebApp Image
-    - name: Build WebApp Docker image
+    # Step 4: Build Flask App (myapp)
+    - name: Build MyApp Docker image
       run: docker build -t myapp -f Dockerfile .
 
-    # Step 5: Run Unit Test on WebApp
-    - name: Smoke Test WebApp
+    # Step 5: Run Unit Test with Required Env Vars
+    - name: Smoke Test MyApp
       run: |
-        docker run -d -p 8080:81 --name test-app myapp
+        docker run -d \
+          -p 8080:81 \
+          --name test-app \
+          -e DBHOST="localhost" \
+          -e DBUSER="root" \
+          -e DBPWD="pw" \
+          -e DATABASE="employees" \
+          -e GROUP_NAME="TestGroup" \
+          -e GROUP_SLOGAN="Testing Pipeline" \
+          -e S3_BUCKET_NAME="dummy-bucket" \
+          -e S3_IMAGE_KEY="dummy.png" \
+          -e AWS_ACCESS_KEY_ID="${{ secrets.AWS_ACCESS_KEY_ID }}" \
+          -e AWS_SECRET_ACCESS_KEY="${{ secrets.AWS_SECRET_ACCESS_KEY }}" \
+          -e AWS_SESSION_TOKEN="${{ secrets.AWS_SESSION_TOKEN }}" \
+          -e AWS_DEFAULT_REGION="us-east-1" \
+          myapp
+
+        echo "🕐 Waiting for app to start..."
         sleep 5
-        echo "🔍 Container logs:"
-        docker logs test-app || true
-        echo "🌐 Testing endpoint..."
-        curl --fail http://localhost:8080 || (echo "❌ App test failed"; docker ps -a; docker inspect test-app; exit 1)
+        echo "🔍 Logs from container:"
+        docker logs test-app
+
+        echo "🌐 Testing HTTP response..."
+        curl --fail http://localhost:8080 || (echo "❌ App test failed"; exit 1)
+
         docker stop test-app && docker rm test-app
 
-    # Step 6: Tag & Push WebApp Image to ECR
-    - name: Tag and Push WebApp image to ECR
+    # Step 6: Tag and Push MyApp to ECR
+    - name: Push MyApp Image to ECR
       env:
         ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
         ECR_REPOSITORY: clo835/webapp
@@ -55,7 +74,7 @@ jobs:
         docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
 
     # Step 7: Build and Push MySQL Image
-    - name: Build and Push MySQL Docker image
+    - name: Build and Push MySQL Image
       env:
         ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
         ECR_REPOSITORY: clo835/mysql
