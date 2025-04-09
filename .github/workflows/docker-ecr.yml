@@ -26,13 +26,13 @@ jobs:
         python-version: "3.10"
 
     - name: Install dependencies
-      working-directory: ./App
+      working-directory: ./app
       run: |
         pip install -r requirements.txt
         pip install pytest
 
     - name: Run unit tests on Flask app
-      working-directory: ./App
+      working-directory: ./app
       run: pytest test_app.py
 
     - name: Configure AWS credentials
@@ -51,7 +51,7 @@ jobs:
       env:
         ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
       run: |
-        docker build -t myapp -f App/Dockerfile ./App
+        docker build -t myapp -f app/Dockerfile ./app
         docker tag myapp $ECR_REGISTRY/${{ env.WEBAPP_REPO }}:${{ env.IMAGE_TAG }}
         docker push $ECR_REGISTRY/${{ env.WEBAPP_REPO }}:${{ env.IMAGE_TAG }}
 
@@ -59,6 +59,6 @@ jobs:
       env:
         ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
       run: |
-        docker build -t mysql-init -f App/Dockerfile_mysql ./App
+        docker build -t mysql-init -f app/Dockerfile_mysql ./app
         docker tag mysql-init $ECR_REGISTRY/${{ env.MYSQL_REPO }}:${{ env.MYSQL_TAG }}
         docker push $ECR_REGISTRY/${{ env.MYSQL_REPO }}:${{ env.MYSQL_TAG }}
