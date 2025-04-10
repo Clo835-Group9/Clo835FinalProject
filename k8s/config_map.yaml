@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-config
+  namespace: final
+data:
+  S3_BUCKET_NAME: myappbuckect1
+  S3_IMAGE_KEY: Seneca.png
+  GROUP_NAME: Group9
+  GROUP_SLOGAN: "Secure. Scalable. Cloud."
