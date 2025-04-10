@@ -5,6 +5,6 @@ metadata:
   namespace: final
 data:
   S3_BUCKET_NAME: myappbuckect1
-  S3_IMAGE_KEY: Seneca.png
+  S3_IMAGE_KEY: Seneca1.png
   GROUP_NAME: Group9
   GROUP_SLOGAN: "Secure. Scalable. Cloud."

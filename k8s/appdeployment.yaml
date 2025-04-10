@@ -11,7 +11,7 @@ spec:
   template:
     metadata:
       labels:
-        app: flask
+        app: flask  
     spec:
       containers:
         - name: flask-app
@@ -19,7 +19,6 @@ spec:
           ports:
             - containerPort: 81
           env:
-            # Database settings: use the MySQL service as host and credentials from the secret
             - name: DBHOST
               value: mysql-service
             - name: DBUSER
@@ -34,7 +33,6 @@ spec:
                   key: DBPWD
             - name: DATABASE
               value: employees
-            # Application configuration from ConfigMap
             - name: S3_BUCKET_NAME
               valueFrom:
                 configMapKeyRef:

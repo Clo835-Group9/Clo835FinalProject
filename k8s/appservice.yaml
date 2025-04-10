@@ -4,10 +4,11 @@ metadata:
   name: app-service
   namespace: final
 spec:
-  type: LoadBalancer
+  type: NodePort
   selector:
-    app: employees
+    app: flask
   ports:
     - protocol: TCP
-      port: 80
-      targetPort: 81
+      port: 81         
+      targetPort: 81   
+      nodePort: 30081  
