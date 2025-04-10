@@ -5,7 +5,7 @@ metadata:
   name: app-role-binding
 subjects:
   - kind: ServiceAccount
-    name: app-role-binding
+    name: clo835
     namespace: final
 roleRef:
   kind: ClusterRole
