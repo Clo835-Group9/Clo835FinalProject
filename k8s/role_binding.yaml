@@ -9,5 +9,5 @@ subjects:
     namespace: final
 roleRef:
   kind: ClusterRole
-  name: app-role
+  name: clo835
   apiGroup: rbac.authorization.k8s.io
