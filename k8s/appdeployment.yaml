@@ -1,0 +1,57 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: flask-deployment
+  namespace: final
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: flask
+  template:
+    metadata:
+      labels:
+        app: flask
+    spec:
+      containers:
+        - name: flask-app
+          image: 008819936420.dkr.ecr.us-east-1.amazonaws.com/clo835/webapp:app-v0.1
+          ports:
+            - containerPort: 81
+          env:
+            # Database settings: use the MySQL service as host and credentials from the secret
+            - name: DBHOST
+              value: mysql-service
+            - name: DBUSER
+              valueFrom:
+                secretKeyRef:
+                  name: flask-secrets
+                  key: DBUSER
+            - name: DBPWD
+              valueFrom:
+                secretKeyRef:
+                  name: flask-secrets
+                  key: DBPWD
+            - name: DATABASE
+              value: employees
+            # Application configuration from ConfigMap
+            - name: S3_BUCKET_NAME
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: S3_BUCKET_NAME
+            - name: S3_IMAGE_KEY
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: S3_IMAGE_KEY
+            - name: GROUP_NAME
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: GROUP_NAME
+            - name: GROUP_SLOGAN
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: GROUP_SLOGAN
