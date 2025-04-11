@@ -7,6 +7,7 @@ import sys
 from botocore.exceptions import NoCredentialsError
 
 # Group info
+
 GROUP_NAME = os.environ.get("GROUP_NAME", "Group9")
 GROUP_SLOGAN = os.environ.get("GROUP_SLOGAN", "Secure. Scalable. Cloud.")
 
@@ -35,28 +36,29 @@ if COLOR not in color_codes:
     print(f"Invalid APP_COLOR: {COLOR}. Defaulting to 'lime'.")
     COLOR = "lime"
 
-# --- 🔽 Download image from S3 ---
+LOCAL_IMAGE_PATH = os.path.join(os.path.dirname(__file__), "static", "Seneca.png")
+
+# Download logic
 def download_image_from_s3(bucket_name, s3_key, local_path):
     image_url = f"s3://{bucket_name}/{s3_key}"
     try:
         s3 = boto3.client('s3')
+        os.makedirs(os.path.dirname(local_path), exist_ok=True)
         s3.download_file(bucket_name, s3_key, local_path)
         print(f"[INFO] Downloaded image from {image_url}")
-        print(f"[LOG] Background image URL: {image_url}")  # ← Log for assignment
+        print(f"[LOG] Background image URL: {image_url}")
         return True
     except NoCredentialsError:
         print(f"[ERROR] AWS credentials not found.")
-        print(f"[LOG] Background image URL: {image_url}")  # ← Still log the URL even on failure
     except Exception as e:
         print(f"[ERROR] Failed to download image from {image_url}: {e}")
-        print(f"[LOG] Background image URL: {image_url}")
+    print(f"[LOG] Background image URL: {image_url}")
     return False
 
 
-# Use env variables (simulating ConfigMap)
 S3_BUCKET = os.environ.get("S3_BUCKET_NAME")
-S3_KEY = os.environ.get("S3_IMAGE_KEY")  # e.g., "Seneca.png"
-LOCAL_IMAGE_PATH = "static/Seneca1.png"
+S3_KEY = os.environ.get("S3_IMAGE_KEY") 
+
 
 if S3_BUCKET and S3_KEY:
     downloaded = download_image_from_s3(S3_BUCKET, S3_KEY, LOCAL_IMAGE_PATH)
@@ -65,7 +67,7 @@ if S3_BUCKET and S3_KEY:
 else:
     print("[WARN] S3_BUCKET_NAME or S3_IMAGE_KEY not set — skipping image download")
 
-# --- 🛢️ Retry MySQL connection ---
+# --️- Retry MySQL connection ---
 MAX_RETRIES = 5
 RETRY_DELAY = 5
 db_conn = None
@@ -81,12 +83,12 @@ def connect_to_db():
                 password=DBPWD,
                 db=DATABASE
             )
-            print("✅ Successfully connected to MySQL")
+            print("Successfully connected to MySQL")
             return
         except Exception as e:
             print(f"MySQL Connection attempt {attempt + 1} failed: {e}")
             time.sleep(RETRY_DELAY)
-    print("❌ MySQL connection failed after multiple retries. Exiting.")
+    print("MysqL connection failed after multiple retries. Exiting.")
     exit(1)
 
 # 💡 Only run DB connection if NOT in pytest
